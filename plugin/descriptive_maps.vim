@@ -40,13 +40,19 @@ function! s:describe(command_string)
     let l:cmd_split = split(a:command_string)
 
     let l:map_command = l:cmd_split[0]
-    let l:map_args = []
 
+    " Parse the arguments. Use our map arguments
+    let l:list_args = []
     let l:ind = 1
     while (l:ind < len(l:cmd_split)) && (index(s:_map_arguments, l:cmd_split[l:ind]) >= 0)
-        call add(l:map_args, l:cmd_split[l:ind])
+        call add(l:list_args, l:cmd_split[l:ind])
         let l:ind = l:ind + 1
     endwhile
+    if len(l:list_args) > 0
+        let l:map_args = join(l:list_args, ' ')
+    else
+        let l:map_args = ''
+    endif
 
     let l:lhs = l:cmd_split[l:ind]
 
@@ -76,7 +82,7 @@ function! s:_handle_arguments(map_command, map_args, lhs, rhs, description)
                 \ 'executed': g:_description_execute,
                 \ }
 
-    let g:last_handled = a:map_command  . ' ' . join(a:map_args, ' ') . ' ' . a:lhs . ' ' . a:rhs
+    let g:last_handled = a:map_command  . ' ' . a:map_args . ' ' . a:lhs . ' ' . a:rhs
 
     if g:_description_execute
         execute g:last_handled
@@ -100,12 +106,15 @@ function! s:understand(maps)
 
         for l:map in l:maps
             for l:tracked in s:_tracked_descriptors
+                " v:true and v:false don't work with length
+                " so we just use the longer of the two, which is 7.
+                " Might have to do more with this later
                 try
                     let l:current_length = len(g:descriptive_maps[l:mode][l:map][l:tracked])
                 catch
                     let l:current_length = 7
                 endtry
-                    
+
                 " TODO: Handle args correctly
                 let l:understood[l:tracked]['max_length'] = max([
                             \ l:understood[l:tracked]['max_length'],
@@ -118,15 +127,21 @@ function! s:understand(maps)
     return l:understood
 endfunction
 
-function! s:format_line(description, mode, lhs, rhs, understood)
+function! s:format_line(descriptor, understood)
     let l:format = printf(
                 \ '%' . a:understood['description']['max_length'] . 's' .
                 \ ': ' .
                 \ '%' . a:understood['mode']['max_length'] . 's | ' .
                 \ '%' . a:understood['lhs']['max_length'] . 's  --> ' .
                 \ '%' . a:understood['rhs']['max_length'] . 's' .
-                \ '',
-                \ a:description, a:mode, a:lhs, a:rhs
+                \ '  |  with args: ' .
+                \ '%' . a:understood['args']['max_length'] . 's',
+                \
+                \ a:descriptor['description'],
+                \ a:descriptor['mode'],
+                \ a:descriptor['lhs'],
+                \ a:descriptor['rhs'],
+                \ a:descriptor['args']
                 \ )
 
     return l:format
@@ -143,10 +158,7 @@ function! s:get_formatted_lines()
         for l:map in l:maps
             let l:temp = g:descriptive_maps[l:mode][l:map]
             call add(l:lines, s:format_line(
-                        \ l:temp['description'],
-                        \ l:temp['mode'],
-                        \ l:temp['lhs'],
-                        \ l:temp['rhs'],
+                        \ l:temp,
                         \ l:understood
                         \ ))
         endfor
@@ -163,8 +175,15 @@ function! Show_description()
     let l:understood = s:understand(g:descriptive_maps)
     " echo l:understood
 
-    call add(l:lines, s:format_line('Description', 'mode', 'lhs', 'rhs', l:understood))
-    call add(l:lines, repeat('-', len(s:format_line('Description', 'mode', 'lhs', 'rhs', l:understood))))
+    let l:name_dictionary = {
+                \ 'description': 'description',
+                \ 'lhs': 'lhs',
+                \ 'rhs': 'rhs',
+                \ 'mode': 'mode',
+                \ 'args': 'args',
+                \ }
+    call add(l:lines, s:format_line(l:name_dictionary, l:understood))
+    call add(l:lines, repeat('-', len(s:format_line(l:name_dictionary, l:understood))))
 
     call extend(l:lines, s:get_formatted_lines())
 
