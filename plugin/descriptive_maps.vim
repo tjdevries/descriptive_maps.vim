@@ -72,7 +72,12 @@ endfunction
 function! s:_handle_arguments(map_command, map_args, lhs, rhs, description)
     " echom a:map_command . a:map_args . a:lhs . a:rhs . a:description
 
-    let g:descriptive_maps[a:map_command] = get(g:descriptive_maps, a:map_command, {})
+    if a:map_command in keys(g:descriptive_maps)
+        let g:descriptive_maps[a:map_command] = g:descriptive_maps[a:map_command]
+    else
+        let g:descriptive_maps[a:map_command] = get(g:descriptive_maps, a:map_command, {})
+    endif
+
     let g:descriptive_maps[a:map_command][a:lhs] = {
                 \ 'mode': a:map_command,
                 \ 'lhs': a:lhs,

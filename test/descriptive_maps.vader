@@ -8,15 +8,21 @@ Execute:
   Describe nnoremap <leader>x :echo("hello")<CR>
   AssertEqual g:descriptive_maps['nnoremap']['<leader>x']['rhs'], ':echo("hello")<CR>'
   AssertEqual g:descriptive_maps['nnoremap']['<leader>x']['description'], g:_description_unknown
-  AssertEqual g:descriptive_maps['nnoremap']['<leader>x']['args'], []
+  AssertEqual g:descriptive_maps['nnoremap']['<leader>x']['args'], ''
 
 Execute:
   Describe nmap <silent> <leader>h :echo("WOW! SO COOL!")<CR> >>> Tells me something
   AssertEqual g:descriptive_maps['nmap']['<leader>h']['rhs'], ':echo("WOW! SO COOL!")<CR>'
   AssertEqual g:descriptive_maps['nmap']['<leader>h']['description'], 'Tells me something'
-  AssertEqual g:descriptive_maps['nmap']['<leader>h']['args'], ['<silent>']
+  AssertEqual g:descriptive_maps['nmap']['<leader>h']['args'], '<silent>'
 
 Execute:
   Describe nnoremap <leader>x :echo("hello")<CR>
   Describe nmap <silent> <leader>h :echo("WOW! SO COOL!")<CR> >>> Tells me something
   Describe vmap h :echo('vmap')<CR> >>> Another description
+
+Execute:
+  Describe nnoremap <leader>x :echo("hello")<CR>
+  Describe nnoremap <leader>r :echo("new hello")<CR>
+
+  AssertEqual ['<leader>r', '<leader>x'], sort(keys(g:descriptive_maps['nnoremap']))
