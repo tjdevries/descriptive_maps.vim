@@ -43,12 +43,12 @@ nnoremap    <Left> :echom "--> h <-- "<CR>
 nnoremap   <Right> :echom "--> l <-- "<CR>
 nnoremap      <Up> :echom "--> k <-- "<CR> 
 
-" To this
-Describe nmap <silent> <leader>h :echo("WOW! SO COOL!")<CR>
-Describe nnoremap    <Down> :echom "--> j <-- "<CR>
-Describe nnoremap    <Left> :echom "--> h <-- "<CR>
-Describe nnoremap   <Right> :echom "--> l <-- "<CR>
-Describe nnoremap      <Up> :echom "--> k <-- "<CR> 
+" To this (optional descriptions)
+Describe nmap <silent> <leader>h :echo("WOW! SO COOL!")<CR> >>> Tells me something 
+Describe nnoremap    <Down> :echom "--> j <-- "<CR> >>> Silly boy, that's now how you move
+Describe nnoremap    <Left> :echom "--> h <-- "<CR> >>> Silly boy, that's now how you move
+Describe nnoremap   <Right> :echom "--> l <-- "<CR> >>> Silly boy, that's now how you move
+Describe nnoremap      <Up> :echom "--> k <-- "<CR> >>> Silly boy, that's now how you move
 
 " And you're done!
 ```
