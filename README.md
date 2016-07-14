@@ -14,6 +14,8 @@ Do you sometimes forget your mappings? Fear not. Descriptive Maps is here.
 - [ ] Integrate with github.com/tjdevries/nyaovim-popup-menu for really nice completion
 - [ ] Integrate with something similar to Damian Conway's HUDigraphs
 
+## Example
+
 ```vim
 
 " Simply call:
