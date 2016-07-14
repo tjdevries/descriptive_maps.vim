@@ -200,10 +200,12 @@ function! Show_description()
     return l:lines
 endfunction
 
+function! SetUpDescribe()
+    command! -nargs=1 Describe call <SID>describe(<f-args>)
+endfunction
+
 command! -nargs=1 Describe call <SID>describe(<f-args>)
-" command! -nargs=0 ShowDescription call <SID>show_description()
-" command! -nargs=0 ShowDescription call Show_description()
-"
+
 Describe nnoremap <leader>x :echo("hello")<CR>
 Describe nmap <silent> <leader>h :echo("WOW! SO COOL!")<CR> >>> Tells me something
 Describe vmap h :echo('vmap')<CR> >>> Another description
