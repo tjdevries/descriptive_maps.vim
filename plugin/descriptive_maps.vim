@@ -139,7 +139,7 @@ function! s:format_line(descriptor, understood)
                 \ '%' . a:understood['mode']['max_length'] . 's | ' .
                 \ '%' . a:understood['lhs']['max_length'] . 's  --> ' .
                 \ '%' . a:understood['rhs']['max_length'] . 's' .
-                \ '  |  with args: ' .
+                \ '  | ' .
                 \ '%' . a:understood['args']['max_length'] . 's',
                 \
                 \ a:descriptor['description'],
