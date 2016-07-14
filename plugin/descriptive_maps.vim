@@ -36,7 +36,7 @@ let g:_description_execute   = get(g: , '_description_execute'   , v:true)
 let g:_description_separator = get(g: , '_description_separator' , '>>>')
 let g:_description_unknown   = get(g: , '_description_unknown'   , 'Undocumented')
 
-function! s:describe(command_string)
+function! DescribeMap(command_string)
     let l:cmd_split = split(a:command_string)
 
     let l:map_command = l:cmd_split[0]
@@ -200,11 +200,7 @@ function! Show_description()
     return l:lines
 endfunction
 
-function! SetUpDescribe()
-    command! -nargs=1 Describe call <SID>describe(<f-args>)
-endfunction
-
-command! -nargs=1 Describe call <SID>describe(<f-args>)
+command! -nargs=1 Describe call DescribeMap(<f-args>)
 
 Describe nnoremap <leader>x :echo("hello")<CR>
 Describe nmap <silent> <leader>h :echo("WOW! SO COOL!")<CR> >>> Tells me something
