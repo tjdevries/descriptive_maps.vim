@@ -9,10 +9,10 @@ Do you sometimes forget your mappings? Fear not. Descriptive Maps is here.
 
 ## Planned Powers
 
-- [] Remove `Describe` and still have a valid command / mapping
-- [] Add a real-time "completion" option, so that you can see what mappings are possible
-- [] Integrate with github.com/tjdevries/nyaovim-popup-menu for really nice completion
-- [] Integrate with something similar to Damian Conway's HUDigraphs
+- [ ] Remove `Describe` and still have a valid command / mapping
+- [ ] Add a real-time "completion" option, so that you can see what mappings are possible
+- [ ] Integrate with github.com/tjdevries/nyaovim-popup-menu for really nice completion
+- [ ] Integrate with something similar to Damian Conway's HUDigraphs
 
 ```vim
 
