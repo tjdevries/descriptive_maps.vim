@@ -200,6 +200,20 @@ function! Show_description()
     return l:lines
 endfunction
 
+function! s:complete_description()
+    " let l:understood = s:understand(g:descriptive_maps)
+
+    let l:compl_list = []
+    for key in keys(g:descriptive_maps['nnoremap'])
+        call add(l:compl_list, key)
+    endfor
+
+    call complete(col('.'), l:compl_list)
+    return ''
+endfunction
+
+inoremap ,cd <C-R>=<SID>complete_description()<CR>
+
 command! -nargs=1 Describe call DescribeMap(<f-args>)
 
 Describe nnoremap <leader>x :echo("hello")<CR>
