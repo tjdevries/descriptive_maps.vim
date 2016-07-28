@@ -26,3 +26,13 @@ Execute:
   Describe nnoremap <leader>r :echo("new hello")<CR>
 
   AssertEqual ['<leader>r', '<leader>x'], sort(keys(g:descriptive_maps['nnoremap']))
+
+Execute:
+  " Check multiline executions
+  Describe nnoremap <leader>y :echo(
+      \ "hello" .
+      \ "woot"
+      \ )
+
+  AssertEqual ['<leader>y'], sort(keys(g:descriptive_maps['nnoremap']))
+  AssertEqual ':echo( "hello" . "woot" )', g:descriptive_maps['nnoremap']['<leader>y']['rhs']
