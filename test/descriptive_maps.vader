@@ -1,38 +1,55 @@
-Before:
-  let g:descriptive_maps = {}
+Execute:
+  let current_test = 'n  ,cc           <Plug>(InYoFace_Toggle)<CR>'
+  Log descriptive_maps#parse_line(current_test)
 
-  " Don't actually execute the mapping
-  let g:_description_execute = v:false
+  let current_test = 'n  ,cc         *  <Plug>(InYoFace_Toggle)<CR>'
+  Log descriptive_maps#parse_line(current_test)
 
 Execute:
-  Describe nnoremap <leader>x :echo("hello")<CR>
-  AssertEqual g:descriptive_maps['nnoremap']['<leader>x']['rhs'], ':echo("hello")<CR>'
-  AssertEqual g:descriptive_maps['nnoremap']['<leader>x']['description'], g:_description_unknown
-  AssertEqual g:descriptive_maps['nnoremap']['<leader>x']['args'], ''
+  let current_test = '  Last set from ~/Git/config_manager/nvim/init/05-inyoface.vim'
+
+  AssertEqual '~/Git/config_manager/nvim/init/05-inyoface.vim', descriptive_maps#parse_source(current_test)
 
 Execute:
-  Describe nmap <silent> <leader>h :echo("WOW! SO COOL!")<CR> >>> Tells me something
-  AssertEqual g:descriptive_maps['nmap']['<leader>h']['rhs'], ':echo("WOW! SO COOL!")<CR>'
-  AssertEqual g:descriptive_maps['nmap']['<leader>h']['description'], 'Tells me something'
-  AssertEqual g:descriptive_maps['nmap']['<leader>h']['args'], '<silent>'
+  let g:current_maps_list_test = [
+    \ 'n  ,cc           <Plug>(InYoFace_Toggle)<CR>',
+    \ '  Last set from ~/Git/config_manager/nvim/init/05-inyoface.vim',
+    \ 'n  ,cd         * :windo lcd<Space>',
+    \ 'n  ,c            "bc',
+    \ '  Last set from ~/Git/config_manager/nvim/init/04-keymaps.vim',
+    \ 'n  ,cl         * :call CycleListChars()<CR>',
+    \ '  Last set from ~/Git/config_manager/nvim/init/01-basic_configuration.vim',
+    \ 'n  ,di         * :call CycleIncCommand()<CR>',
+    \ ' Last set from ~/Git/config_manager/nvim/init/01-basic_configuration.vim',
+    \ ]
 
-Execute:
-  Describe nnoremap <leader>x :echo("hello")<CR>
-  Describe nmap <silent> <leader>h :echo("WOW! SO COOL!")<CR> >>> Tells me something
-  Describe vmap h :echo('vmap')<CR> >>> Another description
+  let current_maps_test = join(current_maps_list_test, "\n")
+  let g:current_maps_dict =  descriptive_maps#parse(current_maps_test)
 
-Execute:
-  Describe nnoremap <leader>x :echo("hello")<CR>
-  Describe nnoremap <leader>r :echo("new hello")<CR>
+Execute (this will only work on my machine):
+  let current_maps_list = [
+    \ 'n  ,cl         * :call CycleListChars()<CR>',
+    \ '  Last set from ~/Git/config_manager/nvim/init/01-basic_configuration.vim',
+    \ ]
 
-  AssertEqual ['<leader>r', '<leader>x'], sort(keys(g:descriptive_maps['nnoremap']))
+  let current_maps = join(current_maps_list, "\n")
+  let map_dict = descriptive_maps#parse(current_maps)
+  Log map_dict
 
-Execute:
-  " Check multiline executions
-  Describe nnoremap <leader>y :echo(
-      \ "hello" .
-      \ "woot"
-      \ )
+  Log descriptive_maps#find_comments(map_dict['n'][',cl'])
 
-  AssertEqual ['<leader>y'], sort(keys(g:descriptive_maps['nnoremap']))
-  AssertEqual ':echo( "hello" . "woot" )', g:descriptive_maps['nnoremap']['<leader>y']['rhs']
+Execute (this will be long):
+  let complete_map = descriptive_maps#parse(execute('verbose nmap'))
+  Log keys(complete_map['n'])
+  Log complete_map['n']['?']
+
+
+Execute (out of range problem):
+  let current_maps_list = [
+    \ 'n  <Plug>(characterize) & :<C-U>echo <SNR>146_info(matchstr(getline('.')[col('.')-1:-1],'.'))<CR>',
+    \ ' Last set from ~/.vim/plugged/vim-characterize/plugin/characterize.vim',
+    \ ]
+
+  let current_maps = join(current_maps_list, "\n")
+  let map_dict = descriptive_maps#parse(current_maps)
+  Log map_dict

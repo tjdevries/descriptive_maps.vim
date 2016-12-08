@@ -1,197 +1,183 @@
 
 let s:_map_arguments = [
-            \ '<buffer>',
-            \ '<nowait>',
-            \ '<silent>',
-            \ '<special>',
-            \ '<script>',
-            \ '<expr>',
-            \ '<unique>'
-            \ ]
+      \ '<buffer>',
+      \ '<nowait>',
+      \ '<silent>',
+      \ '<special>',
+      \ '<script>',
+      \ '<expr>',
+      \ '<unique>'
+      \ ]
 let s:_tracked_descriptors = [
-            \ 'mode',
-            \ 'lhs',
-            \ 'rhs',
-            \ 'description',
-            \ 'args',
-            \ 'executed',
-            \ ]
+      \ 'mode',
+      \ 'lhs',
+      \ 'rhs',
+      \ 'description',
+      \ 'args',
+      \ 'executed',
+      \ ]
 
-""
-" Store information about the mapping in {command_string}
-" Also executes the command if {to_exec} is v:true
-function! descriptive_maps#describe(command_string, to_exec)
-    let l:cmd_split = split(a:command_string)
 
-    let l:map_command = l:cmd_split[0]
+function! descriptive_maps#parse(map_string) abort
+  if type(a:map_string) == type('string')
+    let l:map_list = split(a:map_string, "\n")
+  elseif type(a:map_string) == type([])
+    let l:map_list = a:map_string
+  endif
 
-    " Parse the arguments. Use our map arguments
-    let l:list_args = []
-    let l:ind = 1
-    while (l:ind < len(l:cmd_split)) && (index(s:_map_arguments, l:cmd_split[l:ind]) >= 0)
-        call add(l:list_args, l:cmd_split[l:ind])
-        let l:ind = l:ind + 1
-    endwhile
-    if len(l:list_args) > 0
-        let l:map_args = join(l:list_args, ' ')
-    else
-        let l:map_args = ''
+  let l:map_dict = {
+        \ 'n': {}
+        \ }
+
+  for l:line in l:map_list
+    if l:line =~# '^n' 
+      let l:mapped = descriptive_maps#parse_line(l:line)
+      let l:map_dict[l:mapped['mode']][l:mapped['lhs']] = l:mapped
+    elseif l:line =~? '\s*Last set from'
+      let l:map_dict[l:mapped['mode']][l:mapped['lhs']]['source'] = descriptive_maps#parse_source(l:line)
+    endif
+  endfor
+
+  for l:map in keys(l:map_dict['n'])
+    " TODO: Try and fix this rather than just let it be.
+    try
+      let l:map_dict['n'][l:map]['comments'] = descriptive_maps#find_comments(l:map_dict['n'][l:map])
+    catch
+      let l:map_dict['n'][l:map]['comments'] = []
+    endtry
+  endfor
+
+  return l:map_dict
+endfunction
+
+function! descriptive_maps#parse_line(line) abort
+  let l:parse_string = '\(\S*\)'            " Get the mode atom
+  let l:parse_string .= '\s*'               " Eliminate white space
+  let l:parse_string .= '\(\S*\)'           " Get the lhs atom
+  let l:parse_string .= '\s*'               " Eliminate white space
+  let l:parse_string .= '\(\%[\*]\)'        " Optionally check for the map atom
+  let l:parse_string .= '\(\%[&]\)'         " Optionally check for the script local atom
+  let l:parse_string .= '\(\%[@]\)'         " Optionally check for the buffer-local atom
+  let l:parse_string .= '\s*'               " Eliminate white space
+  let l:parse_string .= '\(.*\)'            " Get the rhs atom
+
+  let l:matched = matchlist(a:line, l:parse_string)[1:6]
+
+  let l:mode_atom = 0
+  let l:lhs_atom = 1
+  let l:remap_atom = 2
+  let l:script_atom = 3
+  let l:remap_atom = 4
+  let l:rhs_atom = 5
+
+  return {
+        \ 'raw': a:line,
+        \ 'mode': l:matched[l:mode_atom],
+        \ 'lhs': l:matched[l:lhs_atom],
+        \ 'rhs': l:matched[l:rhs_atom],
+        \ 'remap': l:matched[l:remap_atom] ==? '' ? v:false : v:true,
+        \ 'source': '',
+        \ }
+endfunction
+
+function! descriptive_maps#parse_source(line) abort
+  return matchlist(a:line, '\(\s*Last set from \)\(.*\)')[2]
+endfunction
+
+function! descriptive_maps#find_comments(map_dict) abort
+  if a:map_dict['source'] ==# ''
+    return []
+  endif
+
+  if !filereadable(expand(a:map_dict['source']))
+    return []
+  endif
+
+  let l:file_source = readfile(expand(a:map_dict['source']))
+
+  if empty(l:file_source)
+    return []
+  endif
+
+  let l:index = 0
+  for l:file_line in l:file_source
+    " if matchstr(l:file_line, printf('^%s\a*\s*%s\s%s.*',
+    "       \ a:map_dict['mode'],
+    "       \ a:map_dict['lhs'],
+    "       \ a:map_dict['rhs'])) !=# ''
+    "   return l:index
+    " endif
+
+    if len(l:file_line) > len(a:map_dict['rhs']) && matchstr(l:file_line, a:map_dict['rhs']) !=# ''
+      let l:comments = []
+
+      " Don't go below the end of the file source
+      if l:index <= 1 || l:index >= len(l:file_source)
+        return l:comments
+      endif
+
+      while l:file_source[l:index - 1] =~? '^\s*">'
+        call insert(l:comments, l:file_source[l:index - 1])
+        let l:index -= 1
+
+        " Don't go below the end of the file source
+        if l:index <= 1 || l:index >= len(l:file_source)
+          return l:comments
+        endif
+      endwhile
+
+      return l:comments
     endif
 
-    let l:lhs = l:cmd_split[l:ind]
+    let l:index += 1
+  endfor
 
-    let l:description_split_location = index(l:cmd_split, g:_description_separator)
-    if l:description_split_location >= 0
-        let l:rhs = join(l:cmd_split[l:ind + 1: l:description_split_location - 1], ' ')
-        let l:description = join(l:cmd_split[l:description_split_location + 1:], ' ')
-    else
-        let l:rhs = join(l:cmd_split[l:ind + 1:], ' ')
-        let l:description = g:_description_unknown
+  return []
+endfunction
+
+function! descriptive_maps#hint(maps) abort
+  let l:complete_result = ''
+
+  pclose
+  new +setlocal\ previewwindow|setlocal\ buftype=nofile|setlocal\ noswapfile|setlocal\ wrap
+  exe 'normal z' . &previewheight . "\<cr>"
+
+  let l:line_num = 1
+  for l:key in keys(a:maps)
+    call setline(l:line_num, l:key)
+    let l:line_num += 1
+  endfor
+  redraw
+
+  while v:true
+    let l:temp = getchar()
+    let l:complete_result .= nr2char(l:temp)
+    echon '> ' . l:complete_result
+
+    if l:temp ==? 13
+      break
     endif
 
-    call descriptive_maps#handle_arguments(l:map_command, l:map_args, l:lhs, l:rhs, l:description)
-endfunction
+    pclose
+    new +setlocal\ previewwindow|setlocal\ buftype=nofile|setlocal\ noswapfile|setlocal\ wrap
+    exe 'normal z' . &previewheight . "\<cr>"
 
+    let l:line_num = 1
+    for l:key in keys(a:maps)
+      if match(l:key, l:complete_result, 0) == 0
+        if !empty(a:maps[l:key]['comments'])
+          call setline(l:line_num, printf('%s: %s',
+                \ l:key,
+                \ string(a:maps[l:key]['comments'])
+                \ ))
+        else
+          call setline(l:line_num, l:key)
+        endif
 
-function! descriptive_maps#handle_arguments(map_command, map_args, lhs, rhs, description)
-    " echom a:map_command . a:map_args . a:lhs . a:rhs . a:description
-
-    if index(keys(g:descriptive_maps), a:map_command) >= 0
-        let g:descriptive_maps[a:map_command] = g:descriptive_maps[a:map_command]
-    else
-        let g:descriptive_maps[a:map_command] = get(g:descriptive_maps, a:map_command, {})
-    endif
-
-    let g:descriptive_maps[a:map_command][a:lhs] = {
-                \ 'mode': a:map_command,
-                \ 'lhs': a:lhs,
-                \ 'rhs': a:rhs,
-                \ 'description': a:description,
-                \ 'args': a:map_args,
-                \ 'executed': g:_description_execute,
-                \ }
-
-    let g:last_handled = a:map_command  . ' ' . a:map_args . ' ' . a:lhs . ' ' . a:rhs
-
-    if g:_description_execute
-        execute g:last_handled
-    endif
-endfunction
-
-""
-" Return information required about the various commands
-" For each characteristic, it returns:
-"   max_length (int): the longest string in the category
-function! descriptive_maps#understand(maps)
-    let l:understood = {}
-    for l:tracked in s:_tracked_descriptors
-        let l:understood[l:tracked] = {}
-        let l:understood[l:tracked]['max_length'] = 0
+        let l:line_num += 1
+      endif
     endfor
-
-    " Find the max length
-    for l:mode in keys(g:descriptive_maps)
-        let l:maps = keys(g:descriptive_maps[l:mode])
-
-        for l:map in l:maps
-            for l:tracked in s:_tracked_descriptors
-                " v:true and v:false don't work with length
-                " so we just use the longer of the two, which is 7.
-                " Might have to do more with this later
-                try
-                    let l:current_length = len(g:descriptive_maps[l:mode][l:map][l:tracked])
-                catch
-                    let l:current_length = 7
-                endtry
-
-                " TODO: Handle args correctly
-                let l:understood[l:tracked]['max_length'] = max([
-                            \ l:understood[l:tracked]['max_length'],
-                            \ l:current_length
-                            \ ])
-            endfor
-        endfor
-    endfor
-
-    return l:understood
+    
+    redraw
+  endwhile
 endfunction
-
-function! s:format_line(descriptor, understood)
-    let l:format = printf(
-                \ '%' . a:understood['description']['max_length'] . 's' .
-                \ ': ' .
-                \ '%' . a:understood['mode']['max_length'] . 's | ' .
-                \ '%' . a:understood['lhs']['max_length'] . 's  --> ' .
-                \ '%' . a:understood['rhs']['max_length'] . 's' .
-                \ '  | ' .
-                \ '%' . a:understood['args']['max_length'] . 's',
-                \
-                \ a:descriptor['description'],
-                \ a:descriptor['mode'],
-                \ a:descriptor['lhs'],
-                \ a:descriptor['rhs'],
-                \ a:descriptor['args']
-                \ )
-
-    return l:format
-endfunction
-
-function! s:get_formatted_lines()
-    let l:understood = descriptive_maps#understand(g:descriptive_maps)
-
-    let l:lines = []
-
-    for l:mode in sort(copy(keys(g:descriptive_maps)))
-        let l:maps = sort(keys(g:descriptive_maps[l:mode]))
-
-        for l:map in l:maps
-            let l:temp = g:descriptive_maps[l:mode][l:map]
-            call add(l:lines, s:format_line(
-                        \ l:temp,
-                        \ l:understood
-                        \ ))
-        endfor
-    endfor
-
-    return l:lines
-endfunction
-
-function! descriptive_maps#report_lines()
-    let l:lines = []
-
-    let l:understood = descriptive_maps#understand(g:descriptive_maps)
-    " echo l:understood
-
-    let l:name_dictionary = {
-                \ 'description': 'description',
-                \ 'lhs': 'lhs',
-                \ 'rhs': 'rhs',
-                \ 'mode': 'mode',
-                \ 'args': 'args',
-                \ }
-    call add(l:lines, s:format_line(l:name_dictionary, l:understood))
-    call add(l:lines, repeat('-', len(s:format_line(l:name_dictionary, l:understood))))
-
-    call extend(l:lines, s:get_formatted_lines())
-
-
-    for l:line in l:lines
-        echo l:line
-    endfor
-
-    return l:lines
-endfunction
-
-function! descriptive_maps#complete_description(prefix)
-    " let l:understood = descriptive_maps#understand(g:descriptive_maps)
-
-    let l:compl_list = []
-    for key in keys(g:descriptive_maps['nnoremap'])
-        call add(l:compl_list, key)
-    endfor
-
-    call complete(col('.'), l:compl_list)
-    return ''
-endfunction
-
-

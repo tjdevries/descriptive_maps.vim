@@ -1,0 +1,3 @@
+[submodule "rplugin/python3/descriptive_maps/prompt"]
+	path = rplugin/python3/descriptive_maps/prompt
+	url = https://github.com/lambdalisue/neovim-prompt
