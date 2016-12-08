@@ -9,7 +9,7 @@
 " Describe vmap h :echo('vmap')<CR> >>> Another description
 ""
 
-if exists("g:loaded_descriptive_maps")
+if exists('g:loaded_descriptive_maps')
     finish
 endif
 let g:loaded_descriptive_maps = 1
@@ -22,7 +22,9 @@ let g:_description_separator = get(g:, '_description_separator' , '>>>')
 let g:_description_unknown   = get(g:, '_description_unknown'   , 'Undocumented')
 
 
-echom "hello"
-inoremap ,cd <C-R>=descriptive_maps#complete_description("n")<CR>
+" inoremap ,cd <C-R>=descriptive_maps#complete_description("n")<CR>
+" command! -nargs=1 Describe call descriptive_maps#describe(<f-args>, g:_description_execute)
 
-command! -nargs=1 Describe call descriptive_maps#describe(<f-args>, g:_description_execute)
+function! DescrbeParse(m) abort
+    return descriptive_maps#parse_source(a:m)
+endfunction
