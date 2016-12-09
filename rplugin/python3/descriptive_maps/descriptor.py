@@ -8,6 +8,19 @@ from .action import DEFAULT_ACTION_KEYMAP, DEFAULT_ACTION_RULES
 from .util import assign_content
 
 
+def option_filter(options, text, ignorecase=True):
+    if ignorecase:
+        return [
+            o for o in options
+            if o.lower().startswith(text.lower())
+        ]
+    else:
+        return [
+            o for o in options
+            if o.startswith(text)
+        ]
+
+
 class Descriptor(Prompt):
     def __init__(self, nvim, condition):
         super().__init__(nvim)
@@ -27,6 +40,8 @@ class Descriptor(Prompt):
         self.lhs_max_length = 25
         self.rhs_max_length = 40
 
+        self.option_ignorecase = True
+
     def start(self):
         return super().start()
 
@@ -40,33 +55,45 @@ class Descriptor(Prompt):
         self.nvim.current.window.options['colorcolumn'] = ''
         self.nvim.current.window.options['cursorline'] = True
         self.nvim.current.window.options['cursorcolumn'] = False
+        self.nvim.command('set syntax=vim')
 
     def on_update(self, status):
+        current_mode = 'n'
+
         self.nvim.call('cursor', [1, self.nvim.current.window.cursor[1]])
 
-        options = self._map_dict['n'].keys()
+        options = self._map_dict[current_mode].keys()
 
-        applicable_keys = [
-            o for o in options
-            if o.startswith(self.text)
-        ]
+        applicable_keys = option_filter(options, self.text, self.option_ignorecase)
 
-        result_string = '{0:%s.%s} -> {1:%s.%s} || {2}' % (
+        result_string = '{mode}map {lhs:%s.%s} {rhs:%s.%s} || {comment}' % (
             self.lhs_mapping_length, self.lhs_mapping_length,
             self.rhs_mapping_length, self.rhs_mapping_length,
         )
 
         results = [
             result_string.format(
-                o,
-                self._get_rhs(o),
-                self._format_comment(o),
+                mode=current_mode,
+                lhs=o,
+                rhs=self._get_rhs(o),
+                comment=self._format_comment(o),
             )
             for o in applicable_keys
         ]
 
-        assign_content(self.nvim, results)
+        assign_content(self.nvim, results[:100])
+
+        src = self.nvim.new_highlight_source()
+        buf = self.nvim.current.buffer
+
+        for i in range(len(results)):
+            buf.add_highlight('Comment', i, self.precomment_length, -1, src_id=src)
+
         return super().on_update(status)
+
+    @property
+    def precomment_length(self):
+        return self.lhs_mapping_length + self.rhs_mapping_length + 7
 
     @property
     def lhs_mapping_length(self):

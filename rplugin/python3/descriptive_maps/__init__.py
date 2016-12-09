@@ -9,10 +9,17 @@ class DescriptiveMaps:
 
     @neovim.function('_descriptive_start', sync=True)
     def start(self, args):
-        from .descriptor import Descriptor
-
-        desc = Descriptor(self.nvim, {})
-        status = desc.start()
+        status = self.desc.start()
 
         if status == STATUS_ACCEPT:
             self.nvim.call('append', 0, ['hello world'])
+
+    @property
+    def desc(self):
+        self._desc = getattr(self, '_desc', None)
+
+        if self._desc is None:
+            from .descriptor import Descriptor
+            self._desc = Descriptor(self.nvim, {})
+
+        return self._desc
