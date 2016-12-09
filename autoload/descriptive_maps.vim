@@ -116,7 +116,7 @@ function! descriptive_maps#find_comments(map_dict) abort
         return l:comments
       endif
 
-      while l:file_source[l:index - 1] =~? '^\s*">'
+      while l:file_source[l:index - 1] =~? '^\s*"'
         call insert(l:comments, l:file_source[l:index - 1])
         let l:index -= 1
 
