@@ -50,90 +50,6 @@ function! descriptive_maps#parse(map_string) abort
   return l:map_dict
 endfunction
 
-function! descriptive_maps#parse_line(line) abort
-  let l:parse_string = '\(\S*\)'            " Get the mode atom
-  let l:parse_string .= '\s*'               " Eliminate white space
-  let l:parse_string .= '\(\S*\)'           " Get the lhs atom
-  let l:parse_string .= '\s*'               " Eliminate white space
-  let l:parse_string .= '\(\%[\*]\)'        " Optionally check for the map atom
-  let l:parse_string .= '\(\%[&]\)'         " Optionally check for the script local atom
-  let l:parse_string .= '\(\%[@]\)'         " Optionally check for the buffer-local atom
-  let l:parse_string .= '\s*'               " Eliminate white space
-  let l:parse_string .= '\(.*\)'            " Get the rhs atom
-
-  let l:matched = matchlist(a:line, l:parse_string)[1:6]
-
-  let l:mode_atom = 0
-  let l:lhs_atom = 1
-  let l:remap_atom = 2
-  let l:script_atom = 3
-  let l:remap_atom = 4
-  let l:rhs_atom = 5
-
-  return {
-        \ 'raw': a:line,
-        \ 'mode': l:matched[l:mode_atom],
-        \ 'lhs': l:matched[l:lhs_atom],
-        \ 'rhs': l:matched[l:rhs_atom],
-        \ 'remap': l:matched[l:remap_atom] ==? '' ? v:false : v:true,
-        \ 'source': '',
-        \ }
-endfunction
-
-function! descriptive_maps#parse_source(line) abort
-  return matchlist(a:line, '\(\s*Last set from \)\(.*\)')[2]
-endfunction
-
-function! descriptive_maps#find_comments(map_dict) abort
-  if a:map_dict['source'] ==# ''
-    return []
-  endif
-
-  if !filereadable(expand(a:map_dict['source']))
-    return []
-  endif
-
-  let l:file_source = readfile(expand(a:map_dict['source']))
-
-  if empty(l:file_source)
-    return []
-  endif
-
-  let l:index = 0
-  for l:file_line in l:file_source
-    " if matchstr(l:file_line, printf('^%s\a*\s*%s\s%s.*',
-    "       \ a:map_dict['mode'],
-    "       \ a:map_dict['lhs'],
-    "       \ a:map_dict['rhs'])) !=# ''
-    "   return l:index
-    " endif
-
-    if len(l:file_line) > len(a:map_dict['rhs']) && matchstr(l:file_line, a:map_dict['rhs']) !=# ''
-      let l:comments = []
-
-      " Don't go below the end of the file source
-      if l:index <= 1 || l:index >= len(l:file_source)
-        return l:comments
-      endif
-
-      while l:file_source[l:index - 1] =~? '^\s*"'
-        call insert(l:comments, l:file_source[l:index - 1])
-        let l:index -= 1
-
-        " Don't go below the end of the file source
-        if l:index <= 1 || l:index >= len(l:file_source)
-          return l:comments
-        endif
-      endwhile
-
-      return l:comments
-    endif
-
-    let l:index += 1
-  endfor
-
-  return []
-endfunction
 
 function! descriptive_maps#hint(maps) abort
   let l:complete_result = ''
@@ -180,4 +96,13 @@ function! descriptive_maps#hint(maps) abort
     
     redraw
   endwhile
+endfunction
+
+function! descriptive_maps#find_variables()
+  let l:variables = {}
+  for var in filter(map(split(execute('let g:'), "\n"), "matchstr(v:val, '\\S\\+')"), "v:val =~# '^descriptive_map#'")
+    let l:variables[var] = g:{var}
+  endfor
+
+  return l:variables
 endfunction
