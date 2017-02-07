@@ -12,14 +12,16 @@ class DescriptiveMaps:
         status = self.desc.start()
 
         if status == STATUS_ACCEPT:
-            self.nvim.call('append', 0, ['hello world'])
+            self.nvim.call('execute', 'close')
+            # self.nvim.call('append', 0, ['hello world'])
+            return self.nvim.call('nvim_input', self.desc.text)
 
     @property
     def desc(self):
         self._desc = getattr(self, '_desc', None)
 
-        if self._desc is None:
-            from .descriptor import Descriptor
-            self._desc = Descriptor(self.nvim, {})
+        # if self._desc is None:
+        from .descriptor import Descriptor
+        self._desc = Descriptor(self.nvim, {})
 
         return self._desc

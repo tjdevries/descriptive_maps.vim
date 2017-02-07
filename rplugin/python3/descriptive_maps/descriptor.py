@@ -1,10 +1,11 @@
-import re
-
 from descriptive_maps.prompt.prompt import (
-    Prompt
+    Prompt,
+    STATUS_ACCEPT,
 )
 
 from .action import DEFAULT_ACTION_KEYMAP, DEFAULT_ACTION_RULES
+from .config import DescriptorConfig
+from .parser import parse, ParsedLine
 from .util import assign_content
 
 
@@ -12,28 +13,31 @@ def option_filter(options, text, ignorecase=True):
     if ignorecase:
         return [
             o for o in options
-            if o.lower().startswith(text.lower())
+            if o.lhs.lower().startswith(text.lower())
         ]
     else:
         return [
             o for o in options
-            if o.startswith(text)
+            if o.lhs.startswith(text)
         ]
 
 
 class Descriptor(Prompt):
     def __init__(self, nvim, condition):
         super().__init__(nvim)
+        self._config_raw = self.nvim.call('descriptive_maps#find_variables')
+        self.config = DescriptorConfig(self._config_raw)
+
         self._map_raw = self.nvim.call('execute', ['verbose nmap']).split('\n')
+        self.mapping_candidates = parse(self._map_raw)
 
         # with open('/home/dexter/descriptor.log', 'w') as f:
         #     f.write(str(self._map_raw))
 
-        self._map_dict = self.nvim.call('descriptive_maps#parse', self._map_raw)
-
         self.action.register_from_rules(DEFAULT_ACTION_RULES)
         self.keymap.register_from_rules(self.nvim, DEFAULT_ACTION_KEYMAP)
 
+        # TODO: Move this to the config section
         self._requires_update = False
         self._lhs_mapping_length = None
         self._rhs_mapping_length = None
@@ -60,25 +64,26 @@ class Descriptor(Prompt):
     def on_update(self, status):
         current_mode = 'n'
 
-        self.nvim.call('cursor', [1, self.nvim.current.window.cursor[1]])
-
-        options = self._map_dict[current_mode].keys()
-
-        applicable_keys = option_filter(options, self.text, self.option_ignorecase)
+        applicable_keys = option_filter(self.mapping_candidates, self.text, self.option_ignorecase)
 
         result_string = '{mode}map {lhs:%s.%s} {rhs:%s.%s} || {comment}' % (
             self.lhs_mapping_length, self.lhs_mapping_length,
             self.rhs_mapping_length, self.rhs_mapping_length,
         )
 
+        with open('/home/tjdevries/descriptor.log', 'w') as f:
+            f.write(str([str(x) for x in applicable_keys]))
+
         results = [
             result_string.format(
                 mode=current_mode,
-                lhs=o,
-                rhs=self._get_rhs(o),
-                comment=self._format_comment(o),
+                lhs=candidate.lhs,
+                rhs=candidate.rhs,
+                comment=self._format_comment(candidate),
             )
-            for o in applicable_keys
+            # TODO: Limit here instead of below in the assign content?
+            # This could make things faster
+            for candidate in applicable_keys
         ]
 
         assign_content(self.nvim, results[:100])
@@ -89,7 +94,11 @@ class Descriptor(Prompt):
         for i in range(len(results)):
             buf.add_highlight('Comment', i, self.precomment_length, -1, src_id=src)
 
-        return super().on_update(status)
+        if len(results) == 1 and self.config.immediate_result:
+            self.text = results[0].lhs
+            return STATUS_ACCEPT
+        else:
+            return super().on_update(status)
 
     @property
     def precomment_length(self):
@@ -98,7 +107,7 @@ class Descriptor(Prompt):
     @property
     def lhs_mapping_length(self):
         if self._lhs_mapping_length is None or self._requires_update:
-            self._lhs_mapping_length = max(len(x) for x in self._map_dict['n'].keys()) + 5
+            self._lhs_mapping_length = max(len(x.lhs) for x in self.mapping_candidates) + 5
 
             self._lhs_mapping_length = min(
                 self._lhs_mapping_length,
@@ -110,7 +119,7 @@ class Descriptor(Prompt):
     @property
     def rhs_mapping_length(self):
         if self._rhs_mapping_length is None or self._requires_update:
-            self._rhs_mapping_length = max(len(x['rhs']) for x in self._map_dict['n'].values())
+            self._rhs_mapping_length = max(len(x.rhs) for x in self.mapping_candidates)
 
             self._rhs_mapping_length = min(
                 self._rhs_mapping_length,
@@ -119,14 +128,11 @@ class Descriptor(Prompt):
 
         return self._rhs_mapping_length
 
-    def _get_rhs(self, key):
-        return self._map_dict['n'][key]['rhs']
-
-    def _format_comment(self, key):
-        comment_list = self._map_dict['n'][key]['comments']
+    def _format_comment(self, candidate: ParsedLine):
+        comment_list = candidate.comments
 
         if len(comment_list) == 0:
             return ''
 
-        comment_str = ', '.join(re.sub(r'\A\s*"\s*', '', x) for x in comment_list)
+        comment_str = ', '.join(comment_list)
         return comment_str.replace('">', '').strip()
