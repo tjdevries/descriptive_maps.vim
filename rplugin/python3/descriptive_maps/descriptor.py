@@ -39,8 +39,6 @@ class Descriptor(Prompt):
         self.requires_update = False
         self._lhs_mapping_length = None
         self._rhs_mapping_length = None
-        self.config.max_display_lhs = 25
-        self.config.max_display_rhs = 40
 
     def start(self):
         return super().start()
