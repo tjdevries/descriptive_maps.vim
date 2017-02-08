@@ -21,6 +21,8 @@ let g:_description_execute   = get(g:, '_description_execute'   , v:true)
 let g:_description_separator = get(g:, '_description_separator' , '>>>')
 let g:_description_unknown   = get(g:, '_description_unknown'   , 'Undocumented')
 
+let g:descriptive_maps#filter_case = 'ignorecase'
+
 
 " inoremap ,cd <C-R>=descriptive_maps#complete_description("n")<CR>
 " command! -nargs=1 Describe call descriptive_maps#describe(<f-args>, g:_description_execute)
