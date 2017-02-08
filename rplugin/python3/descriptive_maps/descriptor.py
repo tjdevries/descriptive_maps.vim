@@ -4,13 +4,13 @@ from descriptive_maps.prompt.prompt import (
 )
 
 from .action import DEFAULT_ACTION_KEYMAP, DEFAULT_ACTION_RULES
-from .config import DescriptorConfig
+from .config import DescriptorConfig, FilterCase
 from .parser import parse, ParsedLine
-from .util import assign_content
+from .util import assign_content, open_preview
 
 
-def option_filter(options, text, ignorecase=True):
-    if ignorecase:
+def option_filter(options, text, config=FilterCase.default):
+    if FilterCase.ignorecase:
         return [
             o for o in options
             if o.lhs.lower().startswith(text.lower())
@@ -23,56 +23,40 @@ def option_filter(options, text, ignorecase=True):
 
 
 class Descriptor(Prompt):
-    def __init__(self, nvim, condition):
+    def __init__(self, nvim, condition, config: DescriptorConfig):
         super().__init__(nvim)
-        self._config_raw = self.nvim.call('descriptive_maps#find_variables')
-        self.config = DescriptorConfig(self._config_raw)
+        self.result = ''
+
+        self.config = config
 
         self._map_raw = self.nvim.call('execute', ['verbose nmap']).split('\n')
         self.mapping_candidates = parse(self._map_raw)
 
-        # with open('/home/dexter/descriptor.log', 'w') as f:
-        #     f.write(str(self._map_raw))
-
         self.action.register_from_rules(DEFAULT_ACTION_RULES)
         self.keymap.register_from_rules(self.nvim, DEFAULT_ACTION_KEYMAP)
 
-        # TODO: Move this to the config section
-        self._requires_update = False
+        # State variables
+        self.requires_update = False
         self._lhs_mapping_length = None
         self._rhs_mapping_length = None
-        self.lhs_max_length = 25
-        self.rhs_max_length = 40
-
-        self.option_ignorecase = True
+        self.config.max_display_lhs = 25
+        self.config.max_display_rhs = 40
 
     def start(self):
         return super().start()
 
     def on_init(self):
-        self.nvim.command('new +setlocal previewwindow|setlocal buftype=nofile|setlocal noswapfile|setlocal wrap')
-        self.nvim.current.buffer.options['buftype'] = 'nofile'
-        self.nvim.current.buffer.options['bufhidden'] = 'wipe'
-        self.nvim.current.buffer.options['buflisted'] = False
-        self.nvim.current.window.options['spell'] = False
-        self.nvim.current.window.options['foldenable'] = False
-        self.nvim.current.window.options['colorcolumn'] = ''
-        self.nvim.current.window.options['cursorline'] = True
-        self.nvim.current.window.options['cursorcolumn'] = False
-        self.nvim.command('set syntax=vim')
+        open_preview(self.nvim, 'Descriptor')
 
     def on_update(self, status):
         current_mode = 'n'
 
-        applicable_keys = option_filter(self.mapping_candidates, self.text, self.option_ignorecase)
+        applicable_keys = option_filter(self.mapping_candidates, self.text, self.config)
 
         result_string = '{mode}map {lhs:%s.%s} {rhs:%s.%s} || {comment}' % (
             self.lhs_mapping_length, self.lhs_mapping_length,
             self.rhs_mapping_length, self.rhs_mapping_length,
         )
-
-        with open('/home/tjdevries/descriptor.log', 'w') as f:
-            f.write(str([str(x) for x in applicable_keys]))
 
         results = [
             result_string.format(
@@ -94,8 +78,9 @@ class Descriptor(Prompt):
         for i in range(len(results)):
             buf.add_highlight('Comment', i, self.precomment_length, -1, src_id=src)
 
+        self.result = applicable_keys[self.nvim.call('line', ['.']) - 1]
+
         if len(results) == 1 and self.config.immediate_result:
-            self.text = results[0].lhs
             return STATUS_ACCEPT
         else:
             return super().on_update(status)
@@ -106,24 +91,24 @@ class Descriptor(Prompt):
 
     @property
     def lhs_mapping_length(self):
-        if self._lhs_mapping_length is None or self._requires_update:
+        if self._lhs_mapping_length is None or self.requires_update:
             self._lhs_mapping_length = max(len(x.lhs) for x in self.mapping_candidates) + 5
 
             self._lhs_mapping_length = min(
                 self._lhs_mapping_length,
-                self.lhs_max_length,
+                self.config.max_display_lhs,
             )
 
         return self._lhs_mapping_length
 
     @property
     def rhs_mapping_length(self):
-        if self._rhs_mapping_length is None or self._requires_update:
+        if self._rhs_mapping_length is None or self.requires_update:
             self._rhs_mapping_length = max(len(x.rhs) for x in self.mapping_candidates)
 
             self._rhs_mapping_length = min(
                 self._rhs_mapping_length,
-                self.rhs_max_length,
+                self.config.max_display_rhs,
             )
 
         return self._rhs_mapping_length
