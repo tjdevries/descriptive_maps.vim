@@ -33,7 +33,7 @@ DEFAULTS = {
     },
     'debug_mode': {
         'type': bool,
-        'value': True
+        'value': False
     }
 }
 
