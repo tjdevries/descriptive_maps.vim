@@ -17,7 +17,7 @@ DEFAULTS = {
     },
     'force_refresh': {
         'type': bool,
-        'value': False
+        'value': True
     },
     'immediate_result': {
         'type': bool,
@@ -31,6 +31,10 @@ DEFAULTS = {
         'type': int,
         'value': 40,
     },
+    'debug_mode': {
+        'type': bool,
+        'value': True
+    }
 }
 
 
@@ -79,6 +83,10 @@ class DescriptorConfig:
 
     @property
     def max_display_rhs(self):
+        return self._default()
+
+    @property
+    def debug_mode(self):
         return self._default()
 
     def to_list(self):

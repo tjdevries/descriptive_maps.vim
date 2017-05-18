@@ -76,12 +76,15 @@ class Descriptor(Prompt):
         for i in range(len(results)):
             buf.add_highlight('Comment', i, self.precomment_length, -1, src_id=src)
 
-        self.result = applicable_keys[self.nvim.call('line', ['.']) - 1]
+        if len(applicable_keys):
+            self.debug_msg('APPKEY', applicable_keys[:1])
+            self.result = applicable_keys[self.nvim.call('line', ['.']) - 1]
 
-        if len(results) == 1 and self.config.immediate_result:
-            return STATUS_ACCEPT
-        else:
-            return super().on_update(status)
+            if len(results) == 1 and self.config.immediate_result:
+                self.debug_msg('ACCEPT', self.result.lhs)
+                return STATUS_ACCEPT
+
+        return super().on_update(status)
 
     @property
     def precomment_length(self):
@@ -119,3 +122,7 @@ class Descriptor(Prompt):
 
         comment_str = ', '.join(comment_list)
         return comment_str.replace('">', '').strip()
+
+    def debug_msg(self, name, item):
+        if self.config.debug_mode:
+            self.nvim.command('echom "[DESC:{0}] {1}"'.format(name, str(item)))

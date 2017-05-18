@@ -27,6 +27,6 @@ let g:descriptive_maps#filter_case = 'ignorecase'
 " inoremap ,cd <C-R>=descriptive_maps#complete_description("n")<CR>
 " command! -nargs=1 Describe call descriptive_maps#describe(<f-args>, g:_description_execute)
 
-function! DescrbeParse(m) abort
+function! DescribeParse(m) abort
     return descriptive_maps#parse_source(a:m)
 endfunction
