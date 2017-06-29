@@ -13,6 +13,4 @@ For now, use the command:
 
 And you can see all your mappings.
 
-Soon, I'll add back the ability to view comments about them.
-
-Sometimes, it executes correctly, other times it does not. :)
+Once comments on mappings can be added to nvim, I'll add back the ability to view comments about them.
